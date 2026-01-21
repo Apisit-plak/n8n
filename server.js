@@ -11,9 +11,28 @@ const PORT = process.env.PORT || 3000;
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.premium.co.th/webhook-test/plak';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*', // หรือระบุ origin ที่เฉพาะเจาะจง
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
-// ไม่ serve static files แล้ว เพราะใช้ Nginx แทน
+
+// Serve static files (index.html)
+app.use(express.static(path.join(__dirname)));
+
+// Handle OPTIONS preflight requests
+app.options('/api/chat', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.sendStatus(200);
+});
+
+// Serve index.html for root path
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Chat API endpoint
 app.post('/api/chat', async (req, res) => {
@@ -47,33 +66,56 @@ app.post('/api/chat', async (req, res) => {
         });
 
         // Extract response from n8n
-        // n8n อาจจะส่ง response กลับมาในรูปแบบต่างๆ ขึ้นอยู่กับการตั้งค่า workflow
+        // n8n ส่ง response กลับมาเป็น { "reply": "..." } จาก Respond to Webhook node
         let responseText = '';
         
-        if (typeof n8nResponse.data === 'string') {
-            responseText = n8nResponse.data;
-        } else if (n8nResponse.data && n8nResponse.data.response) {
-            responseText = n8nResponse.data.response;
-        } else if (n8nResponse.data && n8nResponse.data.reply) {
-            // รองรับ reply field ที่ n8n ส่งมา
-            responseText = n8nResponse.data.reply;
-        } else if (n8nResponse.data && n8nResponse.data.message) {
-            responseText = n8nResponse.data.message;
-        } else if (n8nResponse.data && Array.isArray(n8nResponse.data) && n8nResponse.data.length > 0) {
-            // ถ้า n8n ส่ง array กลับมา และ array มี reply field
-            const firstItem = n8nResponse.data[0];
-            if (firstItem && firstItem.reply) {
-                responseText = firstItem.reply;
-            } else if (firstItem && firstItem.response) {
-                responseText = firstItem.response;
+        console.log('Raw n8n response data:', JSON.stringify(n8nResponse.data, null, 2));
+        
+        // ตรวจสอบ reply field ก่อน (เพราะ n8n ใช้ {{ $json.reply }} ใน Respond to Webhook)
+        if (n8nResponse.data && typeof n8nResponse.data === 'object') {
+            if (n8nResponse.data.reply !== undefined && n8nResponse.data.reply !== null) {
+                const replyValue = String(n8nResponse.data.reply);
+                
+                // ตรวจสอบว่า n8n ส่ง expression string กลับมาแทนค่าจริง (ไม่ได้ evaluate)
+                if (replyValue.trim() === '{{ $json.reply }}' || replyValue.includes('{{ $json')) {
+                    console.warn('⚠️ n8n ส่ง expression string กลับมา แสดงว่า expression ไม่ได้ถูก evaluate');
+                    return res.status(500).json({ 
+                        error: 'n8n workflow ยังไม่ได้ evaluate expression\n\n' +
+                               'วิธีแก้ไข:\n' +
+                               '1. เปิด "Respond to Webhook" node ใน n8n\n' +
+                               '2. ตรวจสอบว่า Response Body ใช้ expression mode (คลิกที่ไอคอน = หรือ {{ }})\n' +
+                               '3. ใช้ expression: {{ $json.reply }} (ไม่ใช่ string literal)\n' +
+                               '4. หรือใช้: {{ $json.reply }} ใน Expression Editor\n\n' +
+                               'หมายเหตุ: ถ้าเห็น "{{ $json.reply }}" เป็นข้อความ แสดงว่าไม่ได้ evaluate'
+                    });
+                }
+                
+                // n8n ส่งมาเป็น { "reply": "ข้อความ..." } ที่ถูกต้อง
+                responseText = replyValue;
+            } else if (Array.isArray(n8nResponse.data) && n8nResponse.data.length > 0) {
+                // ถ้า n8n ส่ง array กลับมา
+                const firstItem = n8nResponse.data[0];
+                if (firstItem && typeof firstItem === 'object' && firstItem.reply !== undefined) {
+                    responseText = String(firstItem.reply);
+                } else {
+                    responseText = JSON.stringify(n8nResponse.data, null, 2);
+                }
+            } else if (n8nResponse.data.response !== undefined) {
+                responseText = String(n8nResponse.data.response);
+            } else if (n8nResponse.data.message !== undefined) {
+                responseText = String(n8nResponse.data.message);
+            } else if (typeof n8nResponse.data === 'string') {
+                responseText = n8nResponse.data;
             } else {
                 responseText = JSON.stringify(n8nResponse.data, null, 2);
             }
+        } else if (typeof n8nResponse.data === 'string') {
+            responseText = n8nResponse.data;
         } else {
             responseText = JSON.stringify(n8nResponse.data);
         }
 
-        console.log('n8n response:', responseText);
+        console.log('Extracted response text:', responseText);
 
         res.json({ 
             response: responseText,
