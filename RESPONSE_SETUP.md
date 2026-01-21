@@ -113,7 +113,7 @@ Chat interface จะ:
 - ✅ ตรวจสอบว่า workflow ถูก activate แล้ว
 - ✅ ตรวจสอบว่า Response Body ใช้ `{{ $json.reply }}` ถูกต้อง
 - ✅ ตรวจสอบว่า JavaScript node return `reply` field
-- ✅ ดู logs: `docker-compose logs -f chat-server`
+- ✅ ดู logs ของ `server.js` เพื่อดู error หรือข้อความที่ส่งไป/ได้รับกลับจาก n8n
 
 ### แสดงผลแต่ไม่มีข้อมูล
 - ✅ ตรวจสอบว่า JavaScript node มี output `reply` 

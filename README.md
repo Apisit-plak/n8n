@@ -11,48 +11,7 @@
 - 🎨 UI ที่ทันสมัยและ responsive
 - 🌐 ใช้ Nginx เป็น reverse proxy และ serve static files
 
-## การติดตั้ง
-
-### วิธีที่ 1: ใช้ Docker Compose (แนะนำ)
-
-วิธีที่ง่ายที่สุดคือใช้ Docker Compose ซึ่งจะรันทั้ง n8n และ chat server ให้อัตโนมัติ:
-
-1. ตรวจสอบว่ามี Docker และ Docker Compose ติดตั้งแล้ว:
-```bash
-docker --version
-docker-compose --version
-```
-
-2. เริ่มต้นระบบทั้งหมด:
-```bash
-docker-compose up -d
-```
-
-3. รอให้ containers เริ่มทำงาน (ประมาณ 30-60 วินาที)
-
-4. เปิดเบราว์เซอร์ไปที่:
-   - **Chat Interface**: http://localhost (หรือ http://localhost:80)
-     - หน้าเว็บจะถูก serve โดย Nginx
-   - **n8n Interface**: http://localhost:5678
-     - Username: `admin`
-     - Password: `admin`
-
-5. ดู logs:
-```bash
-docker-compose logs -f
-```
-
-6. หยุดระบบ:
-```bash
-docker-compose down
-```
-
-7. หยุดและลบ volumes (ลบข้อมูล n8n):
-```bash
-docker-compose down -v
-```
-
-### วิธีที่ 2: ติดตั้งแบบปกติ
+## การติดตั้ง (ไม่ใช้ Docker)
 
 1. ติดตั้ง dependencies:
 ```bash
@@ -122,18 +81,12 @@ n8n สามารถส่ง response กลับมาในรูปแบ
 
 ### Chat Server
 - `PORT`: Port สำหรับเซิร์ฟเวอร์ (default: 3000)
-- `N8N_WEBHOOK_URL`: URL ของ n8n webhook (default: http://n8n:5678/webhook/chat)
+- `N8N_WEBHOOK_URL`: URL ของ n8n webhook (เช่น http://localhost:5678/webhook/chat)
 
-### n8n (ใน Docker Compose)
-- `N8N_BASIC_AUTH_USER`: Username สำหรับ n8n (default: admin)
-- `N8N_BASIC_AUTH_PASSWORD`: Password สำหรับ n8n (default: admin)
-- `WEBHOOK_URL`: Base URL สำหรับ webhooks
-
-**หมายเหตุ**: 
-- เมื่อใช้ Docker Compose, chat server จะเชื่อมต่อกับ n8n ผ่าน internal network (`http://n8n:5678`) ไม่ใช่ `localhost`
-- หน้าเว็บจะถูก serve โดย Nginx ที่ port 80 (http://localhost)
-- API requests จะถูก proxy ผ่าน Nginx ไปที่ chat-server
-- n8n workflows จะถูกเก็บใน Docker volume `n8n_data`
+### n8n
+- `N8N_BASIC_AUTH_USER`: Username สำหรับ n8n (ถ้าเปิด Basic Auth)
+- `N8N_BASIC_AUTH_PASSWORD`: Password สำหรับ n8n (ถ้าเปิด Basic Auth)
+- `WEBHOOK_URL`: Base URL สำหรับ webhooks (ตั้งตามโดเมน/เครื่องของคุณ)
 
 ## โครงสร้างไฟล์
 
@@ -142,74 +95,27 @@ n8n สามารถส่ง response กลับมาในรูปแบ
 ├── index.html                      # หน้าแชท UI
 ├── server.js                       # Express server (API only)
 ├── package.json                    # Dependencies
-├── nginx.conf                      # Nginx configuration
-├── Dockerfile                      # Docker image สำหรับ chat server
-├── docker-compose.yml              # Docker Compose configuration
-├── docker-compose.override.yml.example  # ตัวอย่าง override config
-├── .dockerignore                   # Docker ignore file
+├── nginx.conf                      # Nginx configuration (ถ้าต้องการใช้ reverse proxy เอง)
 └── README.md                       # เอกสารนี้
 ```
 
-## การแก้ไขปัญหา
+## การแก้ไขปัญหา (ไม่ใช้ Docker)
 
-### Docker Compose
-
-#### Containers ไม่เริ่มทำงาน
-```bash
-# ตรวจสอบสถานะ containers
-docker-compose ps
-
-# ดู logs
-docker-compose logs
-
-# ดู logs ของ service เฉพาะ
-docker-compose logs chat-server
-docker-compose logs n8n
-```
-
-#### เปลี่ยน username/password ของ n8n
-สร้างไฟล์ `docker-compose.override.yml` (คัดลอกจาก `docker-compose.override.yml.example`) และแก้ไขค่า:
-```yaml
-services:
-  n8n:
-    environment:
-      - N8N_BASIC_AUTH_USER=your_username
-      - N8N_BASIC_AUTH_PASSWORD=your_password
-```
-
-#### เปลี่ยน webhook URL
-แก้ไขใน `docker-compose.override.yml`:
-```yaml
-services:
-  chat-server:
-    environment:
-      - N8N_WEBHOOK_URL=http://n8n:5678/webhook/your-custom-path
-```
-
-### ทั่วไป
-
-#### ไม่สามารถเชื่อมต่อกับ n8n ได้
-- ตรวจสอบว่า n8n ทำงานอยู่: `docker-compose ps`
-- ตรวจสอบว่า webhook URL ถูกต้อง
+### ไม่สามารถเชื่อมต่อกับ n8n ได้
+- ตรวจสอบว่า n8n ทำงานอยู่และเข้าถึงได้จาก browser
+- ตรวจสอบว่า webhook URL ใน `server.js` หรือ `N8N_WEBHOOK_URL` ถูกต้อง
 - ตรวจสอบว่า n8n workflow ถูก activate แล้ว
-- ดู logs: `docker-compose logs n8n`
+- ดู logs ของ n8n และ `server.js` เพื่อตรวจสอบ error
 
-#### ไม่ได้รับ response จาก n8n
-- ตรวจสอบว่า n8n workflow ทำงานถูกต้อง
-- ตรวจสอบว่า workflow ส่ง response กลับมา
-- ดู console log: `docker-compose logs chat-server`
-- ตรวจสอบ webhook path ใน n8n workflow ว่าตรงกับ `N8N_WEBHOOK_URL` หรือไม่
+### ไม่ได้รับ response จาก n8n
+- ตรวจสอบว่า n8n workflow ทำงานถูกต้องและมีการส่ง response กลับ
+- ตรวจสอบว่า field ใน response ตรงกับที่ frontend รองรับ (`response` หรือ `reply`)
+- ลองทดสอบยิง request ตรงไปที่ webhook ของ n8n ด้วย Postman หรือ curl
 
-#### Port ถูกใช้งานแล้ว
-```bash
-# เปลี่ยน port ใน docker-compose.yml
-services:
-  chat-server:
-    ports:
-      - "3001:3000"  # เปลี่ยน 3000 เป็น 3001
-```
+### Port ถูกใช้งานแล้ว
+- เปลี่ยนค่า `PORT` ใน environment variable หรือในโค้ด `server.js`
+- ตรวจสอบว่าไม่มีโปรเซสอื่นใช้ port เดียวกันอยู่
 
 ## License
 
 MIT
-
