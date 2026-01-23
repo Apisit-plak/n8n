@@ -87,10 +87,20 @@ if (action === 'monthly_sales' && !timePeriod) {
 
 whereClause += ' ' + dateCondition;
 
+// เพิ่ม item filter (สำหรับ top_items)
+let itemFilterCondition = '';
+if ($json.item_filter && action === 'top_items') {
+  // ใช้ LIKE เพื่อค้นหาในชื่อสินค้า
+  const filterText = $json.item_filter.replace(/'/g, "''"); // escape single quotes
+  itemFilterCondition = `AND (l.inv_line_description LIKE '%${filterText}%' OR l.inv_line_item_no LIKE '%${filterText}%')`;
+  whereClause += ' ' + itemFilterCondition;
+}
+
 // Return ข้อมูลพร้อม where_clause
 // สำหรับ "Run Once for Each Item" mode ต้อง return object เดียว
 return {
   ...$json,
   where_clause: whereClause.trim(),
-  date_condition: dateCondition
+  date_condition: dateCondition,
+  item_filter_condition: itemFilterCondition
 };

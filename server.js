@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // n8n webhook URL - เปลี่ยนเป็น URL ของ n8n webhook ของคุณ
-const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.premium.co.th/webhook-test/plak';
+const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.premium.co.th/webhook/invoice';
 
 // Middleware
 app.use(cors({
@@ -151,8 +151,30 @@ app.post('/api/chat', async (req, res) => {
 
         // ถ้ามี response จาก n8n แต่มี error
         if (error.response) {
-            return res.status(error.response.status || 500).json({ 
-                error: `n8n returned error: ${error.response.status} - ${JSON.stringify(error.response.data)}` 
+            const status = error.response.status;
+            const errorData = error.response.data;
+            
+            // จัดการ error แต่ละประเภท
+            if (status === 404 && errorData?.message?.includes('webhook') && errorData?.message?.includes('not registered')) {
+                // Webhook ไม่ได้ activate หรือ workflow ไม่ได้เปิด
+                return res.status(503).json({ 
+                    error: '⚠️ ระบบกำลังปรับปรุง กรุณาลองใหม่อีกครั้งในอีกสักครู่\n\n' +
+                           '💡 หรือติดต่อผู้ดูแลระบบ'
+                });
+            }
+            
+            if (status === 500) {
+                // n8n internal error
+                return res.status(500).json({ 
+                    error: '⚠️ เกิดข้อผิดพลาดในระบบ\n\n' +
+                           'กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ'
+                });
+            }
+            
+            // Error อื่นๆ - แสดงข้อความทั่วไป
+            return res.status(status || 500).json({ 
+                error: '⚠️ เกิดข้อผิดพลาดในการประมวลผล\n\n' +
+                       'กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ'
             });
         }
 
