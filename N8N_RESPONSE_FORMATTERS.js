@@ -224,12 +224,16 @@ function formatCustomerInvoicesResponse() {
   reply += 'รายการล่าสุด:\n';
   
   invoices.slice(0, 10).forEach((invoice, index) => {
-    reply += `${index + 1}. ${invoice.inv_no} - ${invoice.inv_date} - ${parseFloat(invoice.total_amount).toLocaleString('th-TH', {minimumFractionDigits: 2})} บาท\n`;
+    // ⚠️ รองรับทั้ง invoice_no และ inv_no (เพื่อรองรับทั้ง 2 format)
+    const invNo = invoice.invoice_no || invoice.inv_no;
+    reply += `${index + 1}. ${invNo} - ${invoice.inv_date} - ${parseFloat(invoice.total_amount).toLocaleString('th-TH', {minimumFractionDigits: 2})} บาท\n`;
   });
   
   reply += '\n━━━━━━━━━━━━━━━━━━━━━━━━\n';
   reply += '💡 ต้องการดูข้อมูลเพิ่มเติม?\n';
-  reply += `• "${invoices[0].inv_no}" - ดูรายละเอียด invoice นี้\n`;
+  // ⚠️ รองรับทั้ง invoice_no และ inv_no
+  const firstInvNo = invoices[0].invoice_no || invoices[0].inv_no;
+  reply += `• "${firstInvNo}" - ดูรายละเอียด invoice นี้\n`;
   reply += '• "ลูกค้าไหนยอดเยอะสุด" - ดูลูกค้ายอดเยอะสุด\n';
   reply += '• "ยอด invoice แต่ละเดือน" - ดูสถิติรายเดือน\n';
   reply += '• "สินค้าขายดีที่สุด 6 เดือน" - ดูสินค้าขายดี';

@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // n8n webhook URL - เปลี่ยนเป็น URL ของ n8n webhook ของคุณ
-const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.premium.co.th/webhook/invoice';
+const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://n8n.premium.co.th/webhook-test/invoice';
 
 // Middleware
 app.use(cors({

@@ -28,7 +28,8 @@ if (!items || items.length === 0) {
 // กรณีที่ 2: มีข้อมูลแต่เป็น object ว่าง
 // ============================================
 const firstItem = items[0].json;
-if (!firstItem || Object.keys(firstItem).length === 0 || !firstItem.inv_no) {
+// ⚠️ ตรวจสอบทั้ง invoice_no และ inv_no (เพื่อรองรับทั้ง 2 format)
+if (!firstItem || Object.keys(firstItem).length === 0 || (!firstItem.invoice_no && !firstItem.inv_no)) {
   return {
     json: {
       reply: "ขออภัยครับ ไม่พบ invoice ของลูกค้านี้ 😔\n\n" +
@@ -67,7 +68,8 @@ reply += 'รายการล่าสุด:\n';
 
 // แสดง invoice สูงสุด 10 รายการ
 invoices.slice(0, 10).forEach((invoice, index) => {
-  const invNo = invoice.inv_no || 'N/A';
+  // ⚠️ รองรับทั้ง invoice_no และ inv_no (เพื่อรองรับทั้ง 2 format)
+  const invNo = invoice.invoice_no || invoice.inv_no || 'N/A';
   const invDate = invoice.inv_date || invoice.inv_posting_date || 'N/A';
   const amount = parseFloat(invoice.total_amount || 0);
   
@@ -83,8 +85,10 @@ reply += '\n━━━━━━━━━━━━━━━━━━━━━━�
 reply += '💡 ต้องการดูข้อมูลเพิ่มเติม?\n';
 
 // Contextual suggestions
-if (invoices[0].inv_no) {
-  reply += `• "${invoices[0].inv_no}" - ดูรายละเอียด invoice นี้\n`;
+// ⚠️ รองรับทั้ง invoice_no และ inv_no (เพื่อรองรับทั้ง 2 format)
+const firstInvNo = invoices[0].invoice_no || invoices[0].inv_no;
+if (firstInvNo) {
+  reply += `• "${firstInvNo}" - ดูรายละเอียด invoice นี้\n`;
 }
 reply += '• "ลูกค้าไหนยอดเยอะสุด" - ดูลูกค้ายอดเยอะสุด\n';
 reply += '• "ยอด invoice แต่ละเดือน" - ดูสถิติรายเดือน\n';
